@@ -133,6 +133,11 @@ class DataMerger:
         rename_mapping = {col: f"funding_{col}" for col in columns_to_rename}
         result = result.rename(rename_mapping)
         
+        # Remove funding_instrument_name column AFTER renaming (string column not needed for ML)
+        if "funding_instrument_name" in result.columns:
+            result = result.drop("funding_instrument_name")
+            print("  ✓ Removed funding_instrument_name column (string data)")
+        
         print(f"✓ funding: {len(result)} rows")
         return result
     
@@ -173,9 +178,11 @@ class DataMerger:
                 suffix="_temp"
             )
             
-            # Remove any duplicate timestamp columns that might have been created
+            # Coalesce timestamps to handle nulls properly
             if "timestamp_dt_temp" in merged_df.columns:
-                merged_df = merged_df.drop("timestamp_dt_temp")
+                merged_df = merged_df.with_columns([
+                    pl.coalesce([pl.col("timestamp_dt"), pl.col("timestamp_dt_temp")]).alias("timestamp_dt")
+                ]).drop("timestamp_dt_temp")
         
         # Sort final result by timestamp
         merged_df = merged_df.sort("timestamp_dt")
