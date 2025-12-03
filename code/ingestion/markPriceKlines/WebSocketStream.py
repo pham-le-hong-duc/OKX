@@ -7,7 +7,7 @@ import websockets
 import polars as pl
 
 class WebSocketStream:
-    def __init__(self, symbol="BTC-USD-SWAP", base_data_path="../../../datalake/1_bronze",
+    def __init__(self, symbol="BTC-USDT-SWAP", base_data_path="../../../datalake/1_bronze",
                  buffer_size=100):
         self.symbol = symbol
         self.base_data_path = Path(base_data_path)

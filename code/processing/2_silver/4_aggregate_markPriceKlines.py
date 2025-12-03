@@ -249,9 +249,9 @@ def auto_process_markpriceklines():
     """Auto discover and process all markPriceKlines files in bronze"""
     
     # Auto-detect paths
-    bronze_mark_dir = Path("datalake/1_bronze/markPriceKlines/btc-usd-swap/1m")
+    bronze_mark_dir = Path("datalake/1_bronze/markPriceKlines/btc-usdt-swap/1m")
     silver_output_dir = Path("datalake/2_silver")
-    symbol = "btc-usd-swap"
+    symbol = "btc-usdt-swap"
     
     print("🎯 AUTO PROCESSING MARKPRICEKLINES FILES")
     print(f"📂 {bronze_mark_dir}")

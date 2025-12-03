@@ -265,3 +265,33 @@ Silver layer contains cleaned and aggregated data with business logic applied.
 | `corr_size_time_sell` | `Float64` |
 | `last_trade_time_ms` | `Int64` |
 | `trade_count` | `Int64` |
+
+
+### IndexPriceKlines Data (Aggregated)
+**Path**: `datalake/2_silver/indexPriceKlines/{symbol}/{interval}/YYYY-MM-DD.parquet`
+**Intervals**: `5m`, `15m`, `1h`, `4h`, `1d` (step size: 5m for all)
+**Source**: Aggregated from bronze indexPriceKlines 1m data with sliding window algorithm
+| Column | Data Type |
+|--------|-----------|
+| `timestamp_dt` | `Datetime(time_unit='us', time_zone=None)` |
+| `open` | `Float64` |
+| `high` | `Float64` |
+| `low` | `Float64` |
+| `close` | `Float64` |
+| `mean` | `Float64` |
+| `std` | `Float64` |
+
+
+### MarkPriceKlines Data (Aggregated)
+**Path**: `datalake/2_silver/markPriceKlines/{symbol}/{interval}/YYYY-MM-DD.parquet`
+**Intervals**: `5m`, `15m`, `1h`, `4h`, `1d` (step size: 5m for all)
+**Source**: Aggregated from bronze markPriceKlines 1m data with sliding window algorithm
+| Column | Data Type |
+|--------|-----------|
+| `timestamp_dt` | `Datetime(time_unit='us', time_zone=None)` |
+| `open` | `Float64` |
+| `high` | `Float64` |
+| `low` | `Float64` |
+| `close` | `Float64` |
+| `mean` | `Float64` |
+| `std` | `Float64` |

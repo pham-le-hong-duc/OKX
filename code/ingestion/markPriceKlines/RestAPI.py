@@ -6,7 +6,7 @@ import okx.api.public as PublicData
 
 class RestAPI:
     
-    def __init__(self, symbol="BTC-USD-SWAP", base_data_path="../../../datalake/1_bronze", buffer_size=2000, base_start_date="2025-01-01"):
+    def __init__(self, symbol="BTC-USDT-SWAP", base_data_path="../../../datalake/1_bronze", buffer_size=2000, base_start_date="2025-01-01"):
         self.symbol = symbol
         self.base_data_path = Path(base_data_path)
         self.publicAPI = PublicData.Public(flag="0")
