@@ -44,13 +44,17 @@ class IndexPriceKlinesAggregator:
         
         # Map column names if needed
         if "open_time" in schema.names():
-            df_lazy = df_lazy.with_columns(pl.col("open_time").alias("timestamp"))
+            df_lazy = df_lazy.with_columns([
+                pl.col("open_time").alias("timestamp"),  # Keep for backward compatibility
+                # Add close_time = open_time + 1 minute (since source data is 1m klines)
+                (pl.col("open_time") + 60 * 1000).alias("close_time")
+            ])
         
-        return df_lazy.sort("timestamp").collect()
+        return df_lazy.sort("close_time").collect()
     
     def create_time_index(self, df_sorted: pl.DataFrame) -> np.ndarray:
-        """Create numpy array for binary search"""
-        return df_sorted["timestamp"].to_numpy()
+        """Create numpy array for binary search using close_time"""
+        return df_sorted["close_time"].to_numpy()
     
     def create_windows_for_date(self, target_date: datetime) -> list:
         """Generate window timestamps for target date (UTC)"""
