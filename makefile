@@ -14,8 +14,8 @@
 
 .PHONY: infra-up producer-up consumer.minio-up batch_minio consumer.timescaledb-up batch_timescaledb predict-up batch_predict up down start-all build
 
-CLOUDFLARED_LOCAL_URL := http://localhost:3000
-CLOUDFLARED_WORKER_URL := https://thesis-redirect.honghongduc0102.workers.dev
+# CLOUDFLARED_LOCAL_URL := http://localhost:3000
+# CLOUDFLARED_WORKER_URL := https://thesis-redirect.honghongduc0102.workers.dev
 
 # Build target
 build:
@@ -33,7 +33,7 @@ infra-up:
 	@echo "STEP 1: Starting infrastructure..."
 	@echo "========================================================="
 	docker-compose -f docker/docker-compose.infrastructure.yml up -d --force-recreate
-	@powershell -NoProfile -Command "& { \$$logDir = Join-Path (Get-Location) '.cloudflared'; \$$logFile = Join-Path \$$logDir 'cloudflared-infra.log'; New-Item -ItemType Directory -Force \$$logDir | Out-Null; if (Test-Path \$$logFile) { Remove-Item \$$logFile -Force }; Start-Process cloudflared -ArgumentList @('tunnel', '--url', '$(CLOUDFLARED_LOCAL_URL)', '--logfile', \$$logFile) -WindowStyle Hidden | Out-Null; \$$publicUrl = \$$null; \$$deadline = (Get-Date).AddSeconds(30); do { Start-Sleep -Seconds 1; if (Test-Path \$$logFile) { \$$match = Select-String -Path \$$logFile -Pattern 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' | Select-Object -Last 1; if (\$$match) { \$$publicUrl = \$$match.Matches[0].Value } } } while ((-not \$$publicUrl) -and ((Get-Date) -lt \$$deadline)); if (-not \$$publicUrl) { Write-Host '[ERROR] Quick Tunnel URL not found.' -ForegroundColor Red; exit 1 }; \$$dashboardUrl = \$$publicUrl.TrimEnd('/') + '/dashboards'; Invoke-RestMethod -Method Post -Uri '$(CLOUDFLARED_WORKER_URL)' -ContentType 'application/json' -Body (@{ url = \$$dashboardUrl } | ConvertTo-Json -Compress) | Out-Null; Write-Host ('[OK] Quick Tunnel URL: ' + \$$publicUrl) -ForegroundColor Green; Write-Host ('[OK] Dashboard URL: ' + \$$dashboardUrl) -ForegroundColor Green; Write-Host ('[OK] Worker updated: $(CLOUDFLARED_WORKER_URL)') -ForegroundColor Green }"
+# 	@powershell -NoProfile -Command "& { \$$logDir = Join-Path (Get-Location) '.cloudflared'; \$$logFile = Join-Path \$$logDir 'cloudflared-infra.log'; New-Item -ItemType Directory -Force \$$logDir | Out-Null; if (Test-Path \$$logFile) { Remove-Item \$$logFile -Force }; Start-Process cloudflared -ArgumentList @('tunnel', '--url', '$(CLOUDFLARED_LOCAL_URL)', '--logfile', \$$logFile) -WindowStyle Hidden | Out-Null; \$$publicUrl = \$$null; \$$deadline = (Get-Date).AddSeconds(30); do { Start-Sleep -Seconds 1; if (Test-Path \$$logFile) { \$$match = Select-String -Path \$$logFile -Pattern 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' | Select-Object -Last 1; if (\$$match) { \$$publicUrl = \$$match.Matches[0].Value } } } while ((-not \$$publicUrl) -and ((Get-Date) -lt \$$deadline)); if (-not \$$publicUrl) { Write-Host '[ERROR] Quick Tunnel URL not found.' -ForegroundColor Red; exit 1 }; \$$dashboardUrl = \$$publicUrl.TrimEnd('/') + '/dashboards'; Invoke-RestMethod -Method Post -Uri '$(CLOUDFLARED_WORKER_URL)' -ContentType 'application/json' -Body (@{ url = \$$dashboardUrl } | ConvertTo-Json -Compress) | Out-Null; Write-Host ('[OK] Quick Tunnel URL: ' + \$$publicUrl) -ForegroundColor Green; Write-Host ('[OK] Dashboard URL: ' + \$$dashboardUrl) -ForegroundColor Green; Write-Host ('[OK] Worker updated: $(CLOUDFLARED_WORKER_URL)') -ForegroundColor Green }"
 	@echo "[OK] Infrastructure started!"
 
 
@@ -82,19 +82,19 @@ batch_timescaledb:
 	@echo "[OK] DAG batch_timescaledb finished!"
 
 # Predict targets
-predict-up:
-	@echo "========================================================="
-	@echo "STEP 7: Starting predict container..."
-	@echo "========================================================="
-	docker-compose -f docker/docker-compose.infrastructure.yml -f docker/docker-compose.streaming.predict.yml up -d --force-recreate streaming-predict
-	@echo "[OK] Predict container started!"
+# predict-up:
+# 	@echo "========================================================="
+# 	@echo "STEP 7: Starting predict container..."
+# 	@echo "========================================================="
+# 	docker-compose -f docker/docker-compose.infrastructure.yml -f docker/docker-compose.streaming.predict.yml up -d --force-recreate streaming-predict
+# 	@echo "[OK] Predict container started!"
 
-batch_predict:
-	@echo "========================================================="
-	@echo "STEP 8: Running DAG batch_predict..."
-	@echo "========================================================="
-	@powershell -Command "& { \$$timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss'); docker exec -e PYTHONWARNINGS=ignore airflow-webserver airflow dags trigger -e \$$timestamp batch_predict 2>&1 | Select-String -Pattern 'Created|triggered' -CaseSensitive; do { Start-Sleep -Seconds 5; \$$status = (docker exec -e PYTHONWARNINGS=ignore airflow-webserver airflow dags state batch_predict \$$timestamp 2>&1 | Select-String -Pattern 'queued|running|success|failed' -CaseSensitive).ToString().Trim(); } while (\$$status -match 'running|queued'); if (\$$status -ne 'success') { Write-Host ('[ERROR] DAG Failed: ' + \$$status) -ForegroundColor Red; exit 1 } }"
-	@echo "[OK] DAG batch_predict finished!"
+# batch_predict:
+# 	@echo "========================================================="
+# 	@echo "STEP 8: Running DAG batch_predict..."
+# 	@echo "========================================================="
+# 	@powershell -Command "& { \$$timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss'); docker exec -e PYTHONWARNINGS=ignore airflow-webserver airflow dags trigger -e \$$timestamp batch_predict 2>&1 | Select-String -Pattern 'Created|triggered' -CaseSensitive; do { Start-Sleep -Seconds 5; \$$status = (docker exec -e PYTHONWARNINGS=ignore airflow-webserver airflow dags state batch_predict \$$timestamp 2>&1 | Select-String -Pattern 'queued|running|success|failed' -CaseSensitive).ToString().Trim(); } while (\$$status -match 'running|queued'); if (\$$status -ne 'success') { Write-Host ('[ERROR] DAG Failed: ' + \$$status) -ForegroundColor Red; exit 1 } }"
+# 	@echo "[OK] DAG batch_predict finished!"
 
 # Combined operations
 up: infra-up consumer.minio-up producer-up batch_minio consumer.timescaledb-up batch_timescaledb predict-up batch_predict
@@ -102,6 +102,6 @@ up: infra-up consumer.minio-up producer-up batch_minio consumer.timescaledb-up b
 down:
 	@powershell -NoProfile -Command "& { \$$timestamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss'); \$$logDir = Join-Path (Get-Location) ('.log/' + \$$timestamp); New-Item -ItemType Directory -Force \$$logDir | Out-Null; \$$containers = @('streaming.producer.binance', 'streaming.producer.reddit', 'streaming.consumer.minio.binance', 'streaming.consumer.minio.reddit', 'streaming.consumer.timescaledb.dashboard', 'streaming.consumer.timescaledb.featurestore', 'streaming.predict'); foreach (\$$container in \$$containers) { \$$exists = docker ps -a --format '{{.Names}}' | Where-Object { \$$_ -eq \$$container }; if (\$$exists) { docker logs \$$container *> (Join-Path \$$logDir (\$$container + '.log')) } }; Write-Host ('[OK] Container logs exported to ' + \$$logDir) -ForegroundColor Green }"
 	@docker-compose -f docker/docker-compose.infrastructure.yml -f docker/docker-compose.streaming.producer.yml -f docker/docker-compose.streaming.consumer.minio.yml -f docker/docker-compose.streaming.consumer.timescaledb.yml -f docker/docker-compose.streaming.predict.yml down
-	@powershell -NoProfile -Command "& { Get-Process cloudflared -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host '[OK] cloudflared stopped if running.' -ForegroundColor Green }"
+# 	@powershell -NoProfile -Command "& { Get-Process cloudflared -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Write-Host '[OK] cloudflared stopped if running.' -ForegroundColor Green }"
 
 start-all: build up
