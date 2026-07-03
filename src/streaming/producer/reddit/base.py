@@ -412,7 +412,7 @@ class CookieManager:
 
 
 HTTP_RETRY_ATTEMPTS = 20
-HTTP_RETRY_BASE_DELAY_SECONDS = 0.1
+HTTP_RETRY_BASE_DELAY_SECONDS = 0.5
 async def fetch_submissions(
     client=None,
     subreddit=None,

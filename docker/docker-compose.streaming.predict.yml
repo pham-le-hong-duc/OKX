@@ -1,0 +1,23 @@
+services:
+  streaming-predict:
+    image: thesis-pipeline:latest
+    container_name: "streaming.predict"
+    command: python -m src.streaming.predict
+    environment:
+      PYTHONUNBUFFERED: 1
+      PYTHONPATH: /app
+      TZ: UTC
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: 5432
+      TIMESCALE_DB: base
+      TIMESCALE_USER: admin
+      TIMESCALE_PASSWORD: password
+    volumes:
+      - ../src:/app/src
+    restart: unless-stopped
+
+networks:
+  default:
+    name: streaming
+    driver: bridge
+    external: true

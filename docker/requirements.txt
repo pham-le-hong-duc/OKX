@@ -12,6 +12,9 @@ polars
 pyarrow
 pandas
 numpy
+joblib
+scikit-learn
+xgboost
 zstandard
 
 # Storage
