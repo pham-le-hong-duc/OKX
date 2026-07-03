@@ -222,6 +222,29 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  streaming-consumer-timescaledb-featurestore:
+    image: ${APP_IMAGE}
+    container_name: streaming.consumer.timescaledb.featurestore
+    command: python -m src.streaming.consumer.timescaledb.featurestore.run
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: /app
+      BOOTSTRAP_SERVERS: redpanda:9092
+      TIMESCALEDB_KAFKA_AUTO_OFFSET_RESET: ${TIMESCALEDB_KAFKA_AUTO_OFFSET_RESET:-latest}
+      TIMESCALEDB_KAFKA_MIN_WARMUP_MESSAGES: ${TIMESCALEDB_KAFKA_MIN_WARMUP_MESSAGES:-500}
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: 5432
+      TIMESCALE_DB: ${TIMESCALE_DB}
+      TIMESCALE_USER: ${TIMESCALE_USER}
+      TIMESCALE_PASSWORD: ${TIMESCALE_PASSWORD}
+      TZ: ${TZ:-UTC}
+    depends_on:
+      redpanda-init:
+        condition: service_completed_successfully
+      timescaledb-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
   streaming-producer-binance:
     image: ${APP_IMAGE}
     container_name: streaming.producer.binance

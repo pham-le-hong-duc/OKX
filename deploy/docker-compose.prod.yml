@@ -292,6 +292,22 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  streaming-consumer-timescaledb-featurestore:
+    <<: *app-image
+    profiles: ["realtime"]
+    command: python -m src.streaming.consumer.timescaledb.featurestore.run
+    environment:
+      <<: *pipeline-env
+      PYTHONPATH: /app
+      TIMESCALEDB_KAFKA_AUTO_OFFSET_RESET: earliest
+      TIMESCALEDB_KAFKA_MIN_WARMUP_MESSAGES: "500"
+    depends_on:
+      redpanda-init:
+        condition: service_completed_successfully
+      timescaledb-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
   streaming-consumer-minio-reddit:
     <<: *app-image
     profiles: ["reddit"]
