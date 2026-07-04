@@ -161,8 +161,8 @@ services:
       GF_INSTALL_PLUGINS: magnesium-wordcloud-panel
     volumes:
       - grafana-data:/var/lib/grafana
-      - ../refer/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ../refer/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ../src/dashboard/provisioning:/etc/grafana/provisioning:ro
+      - ../src/dashboard/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -304,6 +304,20 @@ services:
     depends_on:
       redpanda-init:
         condition: service_completed_successfully
+      timescaledb-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  streaming-predict:
+    <<: *app-image
+    profiles: ["realtime"]
+    command: python -m src.streaming.predict
+    environment:
+      <<: *pipeline-env
+      PYTHONPATH: /app
+    volumes:
+      - ${PREDICT_MODEL_DIR:-/srv/bitcoin-trend-prediction/reddit-models}:/app/src/model:ro
+    depends_on:
       timescaledb-init:
         condition: service_completed_successfully
     restart: unless-stopped

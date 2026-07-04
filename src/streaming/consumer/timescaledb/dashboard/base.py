@@ -454,7 +454,10 @@ class Consumer:
                             if len(df_window) == 0:
                                 continue
 
+                            process_start = time.perf_counter()
+                            aggregate_start = time.perf_counter()
                             aggregated = self.aggregate_window(df_window, window_ts, interval)
+                            aggregate_seconds = time.perf_counter() - aggregate_start
                             if aggregated is None or len(aggregated) == 0:
                                 logger.warning(
                                     f"  {interval:>3s} @ {self._format_ts(window_ts)} "
@@ -469,18 +472,24 @@ class Consumer:
                             )
                             latency_seconds = (current_time_ms - max_ts) / 1000
 
+                            db_write_start = time.perf_counter()
                             self.db_client.upsert_dataframe(
                                 aggregated,
                                 table_name=table_name,
                                 key_column=self.key_column,
                                 schema_name=schema_name,
                             )
+                            db_write_seconds = time.perf_counter() - db_write_start
+                            process_seconds = time.perf_counter() - process_start
                             logger.info(
                                 f"  {interval:>3s} @ {self._format_ts(window_ts)} - "
                                 f"Aggregated {len(df_window):,} records -> "
                                 f"Upserted {len(aggregated)} row(s) into "
                                 f"{schema_name}.{table_name} | "
-                                f"Data lag: {latency_seconds:.2f}s"
+                                f"Data lag: {latency_seconds:.2f}s | "
+                                f"Aggregate: {aggregate_seconds:.3f}s | "
+                                f"DB write: {db_write_seconds:.3f}s | "
+                                f"Total process: {process_seconds:.3f}s"
                             )
                             self.total_aggregated += 1
                         except Exception as exc:

@@ -102,6 +102,20 @@ class RestAPI(ABC):
 
         return int(value)
 
+    @classmethod
+    def _normalize_timestamp_value_to_ms(cls, value):
+        """Normalize seconds/milliseconds/microseconds timestamps to epoch milliseconds."""
+        timestamp = cls._to_timestamp_ms(value)
+        if timestamp is None:
+            return None
+
+        abs_timestamp = abs(timestamp)
+        if abs_timestamp >= cls.MICROSECOND_THRESHOLD:
+            return timestamp // 1000
+        if abs_timestamp < cls.SECOND_THRESHOLD:
+            return timestamp * 1000
+        return timestamp
+
     def _prepare_gap_detection_df(self, df: pl.DataFrame) -> pl.DataFrame | None:
         """Remove embedded headers and rows with invalid timestamps before gap detection."""
         if df is None or df.is_empty():
@@ -327,16 +341,10 @@ class RestAPI(ABC):
                     continue
                 
                 # Auto-detect timestamp unit
-                current_end_ms = self._to_timestamp_ms(current_end)
-                next_start_ms = self._to_timestamp_ms(next_start)
+                current_end_ms = self._normalize_timestamp_value_to_ms(current_end)
+                next_start_ms = self._normalize_timestamp_value_to_ms(next_start)
                 if current_end_ms is None or next_start_ms is None:
                     continue
-                is_microseconds = current_end_ms > 10**15
-                
-                # Normalize to milliseconds if microseconds
-                if is_microseconds:
-                    current_end_ms = current_end_ms // 1000
-                    next_start_ms = next_start_ms // 1000
                 
                 # Check if gap exceeds threshold
                 gap_duration = next_start_ms - current_end_ms
@@ -380,33 +388,23 @@ class RestAPI(ABC):
                 # Auto-detect timestamp unit (milliseconds vs microseconds)
                 # Timestamps > 10^15 are likely microseconds (16+ digits)
                 # Timestamps <= 10^15 are likely milliseconds (13 digits) or seconds (10 digits)
-                first_ts = self._to_timestamp_ms(timestamps[0])
+                first_ts = self._normalize_timestamp_value_to_ms(timestamps[0])
                 if first_ts is None:
                     continue
-                is_microseconds = first_ts > 10**15
-                
-                # Adjust gap threshold based on timestamp unit
-                adjusted_threshold = gap_threshold * 1000 if is_microseconds else gap_threshold
                 
                 for i in range(len(timestamps) - 1):
-                    # Convert to milliseconds - handle int, string, and datetime
-                    ts_i_ms = self._to_timestamp_ms(timestamps[i])
-                    ts_i1_ms = self._to_timestamp_ms(timestamps[i + 1])
+                    ts_i_ms = self._normalize_timestamp_value_to_ms(timestamps[i])
+                    ts_i1_ms = self._normalize_timestamp_value_to_ms(timestamps[i + 1])
                     if ts_i_ms is None or ts_i1_ms is None:
                         continue
                     
                     gap_duration = ts_i1_ms - ts_i_ms
-                    if gap_duration > adjusted_threshold:
-                        # Convert to milliseconds for consistent gap reporting
-                        gap_start_ms = (ts_i_ms // 1000) if is_microseconds else ts_i_ms
-                        gap_end_ms = (ts_i1_ms // 1000) if is_microseconds else ts_i1_ms
-                        gap_duration_ms = gap_end_ms - gap_start_ms
-                        
+                    if gap_duration > gap_threshold:
                         gaps.append({
                             'type': 'internal',
-                            'start': gap_start_ms + 1,
-                            'end': gap_end_ms - 1,
-                            'duration_hours': gap_duration_ms / (1000 * 3600),
+                            'start': ts_i_ms + 1,
+                            'end': ts_i1_ms - 1,
+                            'duration_hours': gap_duration / (1000 * 3600),
                             'inside_file': f"{date_str}.parquet"
                         })
                         
@@ -437,14 +435,9 @@ class RestAPI(ABC):
                 return []
             
             # Auto-detect timestamp unit
-            latest_timestamp_ms = self._to_timestamp_ms(latest_timestamp)
+            latest_timestamp_ms = self._normalize_timestamp_value_to_ms(latest_timestamp)
             if latest_timestamp_ms is None:
                 return []
-            is_microseconds = latest_timestamp_ms > 10**15
-            
-            # Normalize to milliseconds if microseconds
-            if is_microseconds:
-                latest_timestamp_ms = latest_timestamp_ms // 1000
             
             current_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
             
@@ -608,3 +601,5 @@ class RestAPI(ABC):
         else:
             print("No gaps\n")
 
+    SECOND_THRESHOLD = 100_000_000_000
+    MICROSECOND_THRESHOLD = 10_000_000_000_000

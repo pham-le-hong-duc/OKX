@@ -7,6 +7,7 @@ SCHEMAS = ("dashboard", "featurestore")
 KLINE_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
 METRICS_TIMEFRAMES = ("5m", "15m", "1h", "4h", "1d")
 SENTIMENT_TIMEFRAMES = ("1h", "4h", "1d")
+PREDICT_TIMEFRAMES = ("1h", "4h", "1d")
 FEATURESTORE_ROLLING_WINDOWS = (4, 8, 16, 32)
 FEATURESTORE_LAG_WINDOWS = (1, 2, 4, 8, 16, 32)
 FEATURESTORE_TIMEFRAMES = ("1h", "4h", "1d")
@@ -62,6 +63,7 @@ def initialize_dashboard_tables(client: TimescaleDBClient) -> None:
     create_dashboard_futures_klines_tables(client)
     create_dashboard_futures_metrics_tables(client)
     create_dashboard_sentiment_tables(client)
+    create_dashboard_predict_tables(client)
 
 
 def initialize_featurestore_tables(client: TimescaleDBClient) -> None:
@@ -128,6 +130,21 @@ def create_dashboard_sentiment_tables(client: TimescaleDBClient) -> None:
             client,
             schema_name="dashboard",
             table_name=f"sentiment_{timeframe}",
+            time_column="create_time",
+            columns=columns,
+        )
+
+
+def create_dashboard_predict_tables(client: TimescaleDBClient) -> None:
+    columns = [
+        ("create_time", "TIMESTAMP PRIMARY KEY"),
+        ("trend", "INTEGER"),
+    ]
+    for timeframe in PREDICT_TIMEFRAMES:
+        ensure_hypertable(
+            client,
+            schema_name="dashboard",
+            table_name=f"predict_{timeframe}",
             time_column="create_time",
             columns=columns,
         )
