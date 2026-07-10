@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
 import math
+import os
 from pathlib import Path
 import signal
 import threading
@@ -129,6 +130,7 @@ class PredictConsumer:
     INTERVALS = ["1h", "4h", "1d"]
     BOUNDARY_INTERVAL = "20m"
     RETRY_WAIT_SECONDS = 15
+    MAX_RETRY_SECONDS = int(os.getenv("PREDICT_MAX_RETRY_SECONDS", "900"))
 
     def __init__(self) -> None:
         self.db_client = TimescaleDBClient()
@@ -137,6 +139,8 @@ class PredictConsumer:
             self._get_model(interval)
         self.running = True
         self.total_aggregated = 0
+        self.retry_boundary: int | None = None
+        self.retry_started_at: float | None = None
         self.base_boundary_ms = self._parse_interval_to_ms(self.BOUNDARY_INTERVAL)
         self.next_boundary = self._get_next_boundary(
             int(datetime.now(timezone.utc).timestamp() * 1000),
@@ -218,6 +222,7 @@ class PredictConsumer:
         )
 
         loaded: dict[str, pl.DataFrame] = {}
+        missing_sources: list[str] = []
         for source in self.FEATURESTORE_SOURCES:
             table_name = f"{source.table_prefix}_{interval}"
             target_time = open_dt if source.time_column == "open_time" else boundary_dt
@@ -227,8 +232,18 @@ class PredictConsumer:
                 target_time=target_time,
             )
             if df is None or df.is_empty():
-                return None
+                missing_sources.append(
+                    f"featurestore.{table_name}.{source.time_column}={target_time:%Y-%m-%d %H:%M:%S}"
+                )
+                continue
             loaded[source.table_prefix] = df
+
+        if missing_sources:
+            logger.warning(
+                f"  {interval:>3s} @ {self._format_ts(boundary_ts_ms)} - "
+                f"Missing featurestore input(s): {', '.join(missing_sources)}"
+            )
+            return None
 
         return loaded
 
@@ -405,6 +420,26 @@ class PredictConsumer:
                     success = self._predict_interval(interval, self.next_boundary)
                     if not success:
                         processed_all = False
+                        now_monotonic = time.monotonic()
+                        if self.retry_boundary != self.next_boundary:
+                            self.retry_boundary = self.next_boundary
+                            self.retry_started_at = now_monotonic
+
+                        elapsed = (
+                            now_monotonic - self.retry_started_at
+                            if self.retry_started_at is not None
+                            else 0
+                        )
+                        if elapsed >= self.MAX_RETRY_SECONDS:
+                            logger.error(
+                                f"  {interval:>3s} @ {self._format_ts(self.next_boundary)} - "
+                                f"Skipping boundary after {elapsed:.0f}s because featurestore rows are still missing"
+                            )
+                            self.next_boundary += self.base_boundary_ms
+                            self.retry_boundary = None
+                            self.retry_started_at = None
+                            break
+
                         logger.warning(
                             f"  {interval:>3s} @ {self._format_ts(self.next_boundary)} - "
                             f"Featurestore rows are not ready yet, retrying in {self.RETRY_WAIT_SECONDS}s"
@@ -413,6 +448,8 @@ class PredictConsumer:
 
                 if processed_all:
                     self.next_boundary += self.base_boundary_ms
+                    self.retry_boundary = None
+                    self.retry_started_at = None
                 else:
                     time.sleep(self.RETRY_WAIT_SECONDS)
 

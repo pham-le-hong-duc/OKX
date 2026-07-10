@@ -1127,7 +1127,7 @@ def detect_submissions_sentiment(
     w_crypto = torch.tensor([0.42, 0.40, 0.62], device=device)
 
     for idx, submission in enumerate(submissions):
-        if submission.get("relevance") == 1 and submission.get("bot") == 0:
+        if submission.get("bot") == 0:
             title = submission.get("title")
             selftext = submission.get("selftext")
             sentiment_title = clean_text(title, blocked_texts=TITLE_BLOCKED_TEXTS) if title else ""
@@ -1200,7 +1200,7 @@ def detect_comments_sentiment(
     w_crypto = torch.tensor([0.42, 0.40, 0.62], device=device)
 
     for idx, comment in enumerate(comments):
-        if comment.get("relevance") == 1 and comment.get("bot") == 0:
+        if comment.get("bot") == 0:
             body = comment.get("body")
             text_sentiment = clean_text(body, blocked_texts=BODY_BLOCKED_TEXTS) if body else ""
             if text_sentiment:
@@ -1593,7 +1593,7 @@ async def fetch_comment_pipeline(client, watchlist_submission, cookie_manager):
         )
         submissions_to_crawl = submissions_to_crawl[:MAX_COMMENT_SUBMISSIONS_PER_RUN]
     logger.info(f"[reddit] comments fetch start: submissions={len(submissions_to_crawl)}")
-    semaphore = asyncio.Semaphore(8)
+    semaphore = asyncio.Semaphore(32)#8->16->32
     tasks = [fetch_comment_task(
             client=client,
             submission_id=s_id,

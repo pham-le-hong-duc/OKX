@@ -175,18 +175,7 @@ class SentimentConsumer(Consumer):
             time_column="create_time",
             schema_name="featurestore",
         )
-        is_valid_history, history_reason = self._validate_timescaledb_history(
-            timescaledb_historical_df,
-            current_time=current_create_time,
-            interval=interval,
-            time_column="create_time",
-        )
-        if not is_valid_history:
-            logger.warning(
-                f"Skip featurestore sentiment {interval} @ {current_create_time}: "
-                f"{history_reason}"
-            )
-            return None
+        self._log_irregular_history(timescaledb_historical_df, current_create_time, interval)
 
         combined_df = self.combine_history(aggregated_df, timescaledb_historical_df)
         result_df = self._run_feature_steps(combined_df)
@@ -194,6 +183,24 @@ class SentimentConsumer(Consumer):
             return None
 
         return result_df.filter(pl.col("create_time") == current_create_time).sort("create_time")
+
+    def _log_irregular_history(self, history_df, current_time, interval):
+        """
+        Reddit sentiment is event-driven, so a quiet hour can legitimately leave
+        gaps. Do not block the current row; rolling/lag features will be null
+        until enough previous rows exist.
+        """
+        is_valid_history, history_reason = self._validate_timescaledb_history(
+            history_df,
+            current_time=current_time,
+            interval=interval,
+            time_column="create_time",
+        )
+        if not is_valid_history:
+            logger.info(
+                f"Featurestore sentiment {interval} @ {current_time}: "
+                f"using partial/irregular history ({history_reason})"
+            )
 
     def resolve_table_target(self, interval):
         return ("featurestore", f"sentiment_{interval}")
